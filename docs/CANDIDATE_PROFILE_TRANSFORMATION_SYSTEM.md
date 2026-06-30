@@ -16,7 +16,7 @@
 4. [End-to-End Request Flow](#4-end-to-end-request-flow)
 5. [Deployment Architecture](#5-deployment-architecture)
 6. [Non-Functional Requirements](#6-non-functional-requirements)
-7. [Security Design](#7-security-design)
+7. [Input Security and Validation](#7-input-security-and-validation)
 
 ### Low-Level Design
 8. [Folder Structure](#8-folder-structure)
@@ -95,7 +95,6 @@ flowchart TB
         REST[RESTController]
         GQL[GraphQLController]
         RateLimit[RedisRateLimiter]
-        Auth[JWT_AuthFilter]
     end
 
     subgraph orchestration [Orchestration]
@@ -131,8 +130,6 @@ flowchart TB
     end
 
     clients --> gateway
-    Auth --> REST
-    Auth --> GQL
     REST --> RateLimit
     GQL --> RateLimit
     RateLimit --> orchestration
@@ -381,45 +378,40 @@ flowchart TB
 
 ---
 
-## 7. Security Design
+## 7. Input Security and Validation
 
-### 7.1 Authentication and Authorization
+All REST and GraphQL endpoints are **public** — no JWT, API keys, or role-based access control. Protection relies on input validation, rate limiting, and network-level controls (e.g., private network or reverse proxy in production).
 
-- **JWT Bearer tokens** on all `/api/v1/**` endpoints
-- Roles: `RECRUITER` (upload, process, read), `ADMIN` (delete, reprocess, config)
-- GraphQL endpoints protected by same JWT filter
-- Token expiry: 8 hours; refresh via `/api/v1/auth/refresh`
-
-### 7.2 Input Validation
+### 7.1 Input Validation
 
 - Bean Validation (`@Valid`, `@NotBlank`, `@URL`) on all request DTOs
 - File upload constraints: max 10 MB per file; allowed MIME types: `application/pdf`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `text/csv`, `application/json`
 - Server-side MIME sniffing (Apache Tika) — reject extension/MIME mismatch
 - URL validation: LinkedIn URLs must match `linkedin.com/in/*`; GitHub URLs must match `github.com/*`
 
-### 7.3 Secrets Management
+### 7.2 Secrets Management
 
 - LinkedIn dummy account credentials stored in secrets manager, injected at runtime
 - GitHub personal access token stored in secrets manager
 - SMTP credentials for email validation stored in secrets manager
 - No secrets in source code or `application.yml` (use `${ENV_VAR}` placeholders)
 
-### 7.4 Rate Limiting (Security)
+### 7.3 Rate Limiting
 
 - Prevents scraper abuse and DoS on upload/process endpoints
 - See [Section 20 — Rate Limiter Design](#20-rate-limiter-design) for limits
 
-### 7.5 File Storage Security
+### 7.4 File Storage Security
 
-- Files stored outside web root; served via authenticated download endpoint
+- Files stored outside web root; served via dedicated download endpoint
 - Path traversal prevention: sanitize filenames; UUID-based storage paths
 - Optional virus scan hook (ClamAV integration point) on upload
 
-### 7.6 CORS
+### 7.5 CORS
 
 - Allowed origins: Web UI domain only
 - Allowed methods: GET, POST, DELETE
-- Credentials: true (for cookie-based auth if used)
+- Credentials: false
 
 ---
 
@@ -472,11 +464,9 @@ com.eightfold.candidate
 │   ├── AsyncConfig.java
 │   ├── GraphQLConfig.java
 │   ├── OpenApiConfig.java
-│   ├── SecurityConfig.java
 │   └── Resilience4jConfig.java
 ├── controller/
-│   ├── CandidateController.java
-│   └── AuthController.java
+│   └── CandidateController.java
 ├── graphql/
 │   ├── CandidateQueryResolver.java
 │   ├── CandidateFieldResolver.java
@@ -901,16 +891,16 @@ INSERT INTO skill_alias (alias, canonical_name) VALUES
 
 ### 12.1 Endpoint Summary
 
-| Method | Path | Description | Auth |
-|--------|------|-------------|------|
-| POST | `/api/v1/candidate/upload` | Multipart upload of sources + runtime config | RECRUITER |
-| POST | `/api/v1/candidate/process` | Trigger async processing | RECRUITER |
-| GET | `/api/v1/candidate/{id}` | Get canonical profile | RECRUITER |
-| GET | `/api/v1/candidate` | List with search/filter/pagination | RECRUITER |
-| DELETE | `/api/v1/candidate/{id}` | Soft delete | ADMIN |
-| POST | `/api/v1/candidate/{id}/reprocess` | Re-run pipeline | ADMIN |
-| GET | `/api/v1/candidate/{id}/job/{jobId}` | Poll processing job status | RECRUITER |
-| GET | `/api/v1/candidate/{id}/resume` | Download resume file | RECRUITER |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/candidate/upload` | Multipart upload of sources + runtime config |
+| POST | `/api/v1/candidate/process` | Trigger async processing |
+| GET | `/api/v1/candidate/{id}` | Get canonical profile |
+| GET | `/api/v1/candidate` | List with search/filter/pagination |
+| DELETE | `/api/v1/candidate/{id}` | Soft delete |
+| POST | `/api/v1/candidate/{id}/reprocess` | Re-run pipeline |
+| GET | `/api/v1/candidate/{id}/job/{jobId}` | Poll processing job status |
+| GET | `/api/v1/candidate/{id}/resume` | Download resume file |
 
 ### 12.2 POST `/api/v1/candidate/upload`
 
@@ -1066,8 +1056,6 @@ INSERT INTO skill_alias (alias, canonical_name) VALUES
 | 201 | Upload created |
 | 202 | Process/reprocess accepted |
 | 400 | Validation error |
-| 401 | Unauthorized |
-| 403 | Forbidden |
 | 404 | Candidate not found |
 | 409 | Conflict (already processing) |
 | 422 | Unprocessable (parse/projection error) |
@@ -1758,8 +1746,7 @@ return allow
 
 ### 20.3 Client Identification
 
-1. Authenticated: JWT `sub` claim
-2. Unauthenticated: Client IP (via `X-Forwarded-For`)
+Client IP via `X-Forwarded-For` (or direct remote address when behind a load balancer).
 
 ### 20.4 Response Headers
 
@@ -1884,7 +1871,7 @@ flowchart LR
 - Filters: confidence range slider, company dropdown, status
 - Pagination: page size selector (20/50/100)
 - Sort: clickable column headers
-- Row actions: View, Delete (admin), Reprocess (admin)
+- Row actions: View, Delete, Reprocess
 
 ### 22.4 Page 3 — Candidate Detail
 
@@ -2137,7 +2124,6 @@ sequenceDiagram
     <dependency><!-- spring-boot-starter-validation --></dependency>
     <dependency><!-- spring-boot-starter-data-redis --></dependency>
     <dependency><!-- spring-boot-starter-graphql --></dependency>
-    <dependency><!-- spring-boot-starter-security --></dependency>
 
     <!-- Database -->
     <dependency><!-- mssql-jdbc --></dependency>
