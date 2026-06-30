@@ -6,6 +6,7 @@ import com.eightfold.candidate.domain.enums.SourceType;
 import com.eightfold.candidate.domain.model.*;
 import com.eightfold.candidate.service.normalize.EmailValidationService;
 import com.eightfold.candidate.service.normalize.SkillNormalizationService;
+import com.eightfold.candidate.service.normalize.SkillSanitizer;
 import com.eightfold.candidate.service.parser.ResumeTextExtractor;
 import org.springframework.stereotype.Component;
 
@@ -106,12 +107,16 @@ public class CandidateProfileMerger {
         Set<String> existing = new HashSet<>();
         candidate.getSkills().forEach(s -> existing.add(
                 (s.getCanonicalSkill() != null ? s.getCanonicalSkill() : s.getSkillName()).toLowerCase()));
-        for (ParsedSkillDTO skill : parsed.getSkills()) {
-            String canonical = skillNormalization.canonicalize(skill.getName());
+        List<String> rawNames = parsed.getSkills().stream()
+                .map(ParsedSkillDTO::getName)
+                .filter(Objects::nonNull)
+                .toList();
+        for (String atomic : SkillSanitizer.expandToAtomicSkills(rawNames)) {
+            String canonical = skillNormalization.canonicalize(atomic);
             if (canonical != null && !existing.contains(canonical.toLowerCase())) {
                 candidate.getSkills().add(CandidateSkill.builder()
                         .candidate(candidate)
-                        .skillName(skill.getName())
+                        .skillName(atomic)
                         .canonicalSkill(canonical)
                         .sourceType(parsed.getSourceType())
                         .confidence(baseConfidence(parsed.getSourceType()))

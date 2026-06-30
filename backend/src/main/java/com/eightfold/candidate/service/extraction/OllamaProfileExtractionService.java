@@ -2,6 +2,7 @@ package com.eightfold.candidate.service.extraction;
 
 import com.eightfold.candidate.domain.enums.SourceType;
 import com.eightfold.candidate.domain.model.*;
+import com.eightfold.candidate.service.parser.ResumeContactSanitizer;
 import com.eightfold.candidate.service.parser.ResumeTextExtractor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -110,11 +111,13 @@ public class OllamaProfileExtractionService implements ResumeLlmExtractionServic
                 .about(pick(extracted.getAbout(), base.getAbout()))
                 .location(pick(extracted.getLocation(), base.getLocation()))
                 .yearsExperience(pick(extracted.getYearsExperience(), base.getYearsExperience()))
-                .emails(mergeLists(extracted.getEmails(), base.getEmails()))
+                .emails(mergeEmails(extracted.getEmails(), base.getEmails()))
                 .phones(mergeLists(extracted.getPhones(), base.getPhones()))
                 .skills(mergeSkills(extracted.getSkills(), base.getSkills()))
                 .experience(chooseExperience(extracted.getExperience(), base.getExperience()))
                 .education(chooseEducation(extracted.getEducation(), base.getEducation()))
+                .links(mergeLinks(extracted.getLinks(), base.getLinks(),
+                        extracted.getEmails(), base.getEmails()))
                 .build();
     }
 
@@ -157,6 +160,38 @@ public class OllamaProfileExtractionService implements ResumeLlmExtractionServic
         if (preferred == null) return fallback;
         if (preferred instanceof String s && s.isBlank()) return fallback;
         return preferred;
+    }
+
+    private List<String> mergeEmails(List<String> primary, List<String> secondary) {
+        return ResumeContactSanitizer.filterEmails(mergeLists(primary, secondary));
+    }
+
+    private List<ParsedLinkDTO> mergeLinks(
+            List<ParsedLinkDTO> primary, List<ParsedLinkDTO> secondary,
+            List<String> primaryEmails, List<String> secondaryEmails) {
+        java.util.ArrayList<ParsedLinkDTO> merged = new java.util.ArrayList<>();
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        if (primary != null) {
+            for (ParsedLinkDTO link : primary) {
+                if (link.getUrl() != null && seen.add(link.getUrl().toLowerCase())) {
+                    merged.add(link);
+                }
+            }
+        }
+        if (secondary != null) {
+            for (ParsedLinkDTO link : secondary) {
+                if (link.getUrl() != null && seen.add(link.getUrl().toLowerCase())) {
+                    merged.add(link);
+                }
+            }
+        }
+        for (ParsedLinkDTO recovered : ResumeContactSanitizer.linksFromMisplacedContacts(
+                mergeLists(primaryEmails, secondaryEmails), List.of())) {
+            if (seen.add(recovered.getUrl().toLowerCase())) {
+                merged.add(recovered);
+            }
+        }
+        return merged;
     }
 
     private List<String> mergeLists(List<String> primary, List<String> secondary) {

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -66,6 +67,55 @@ class ResumeProfileJsonMapperTest {
         assertEquals("Sri Eshwar College of Engineering", normalized.getInstitution());
         assertEquals(LocalDate.of(2018, 1, 1), normalized.getStartDate());
         assertEquals(LocalDate.of(2022, 1, 1), normalized.getEndDate());
+    }
+
+    @Test
+    void splitsCompoundSkillsFromJson() throws Exception {
+        String json = """
+                {
+                  "skills": [
+                    "Databases MySQL (relational); MongoDB, Redis, PocketBase (NoSQL)",
+                    "React",
+                    "DevOps & Tools, Docker, Git, GitHub"
+                  ]
+                }
+                """;
+
+        ParsedCandidateDTO profile = mapper.fromJsonString(json, SourceType.RESUME, sourceId);
+
+        assertTrue(profile.getSkills().stream().anyMatch(s -> "MySQL".equals(s.getName())));
+        assertTrue(profile.getSkills().stream().anyMatch(s -> "MongoDB".equals(s.getName())));
+        assertTrue(profile.getSkills().stream().anyMatch(s -> "Docker".equals(s.getName())));
+        assertFalse(profile.getSkills().stream().anyMatch(s -> s.getName().contains("Databases")));
+    }
+
+    @Test
+    void rejectsProjectEntriesFromExperience() throws Exception {
+        String json = """
+                {
+                  "experience": [
+                    {
+                      "company": "URL Shortener with Analytics",
+                      "title": "Spring Boot, React, JWT",
+                      "startDate": "2024-11",
+                      "endDate": null,
+                      "current": false
+                    },
+                    {
+                      "company": "Fleet Studio",
+                      "title": "Software Developer Intern",
+                      "startDate": "2025-08",
+                      "endDate": null,
+                      "current": true
+                    }
+                  ]
+                }
+                """;
+
+        ParsedCandidateDTO profile = mapper.fromJsonString(json, SourceType.RESUME, sourceId);
+
+        assertEquals(1, profile.getExperience().size());
+        assertEquals("Fleet Studio", profile.getExperience().getFirst().getCompany());
     }
 
     @Test

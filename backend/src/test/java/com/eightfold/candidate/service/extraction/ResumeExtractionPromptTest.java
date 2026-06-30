@@ -14,6 +14,10 @@ class ResumeExtractionPromptTest {
 
         assertTrue(prompt.contains("resume parser"));
         assertTrue(prompt.contains("education"));
+        assertTrue(prompt.contains("links"));
+        assertTrue(prompt.contains("NEVER put URLs in emails"));
+        assertTrue(prompt.contains("SKILLS (critical)"));
+        assertTrue(prompt.contains("ONE skill per array element"));
         assertTrue(prompt.contains("--- RESUME TEXT ---"));
         assertTrue(prompt.contains(resumeText));
     }

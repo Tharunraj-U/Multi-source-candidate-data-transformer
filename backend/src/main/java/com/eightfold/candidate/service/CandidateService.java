@@ -132,6 +132,7 @@ public class CandidateService {
     }
 
     public void triggerProcessing(UUID candidateId, UUID jobId) {
+
         processingService.runAsync(candidateId, jobId);
     }
 

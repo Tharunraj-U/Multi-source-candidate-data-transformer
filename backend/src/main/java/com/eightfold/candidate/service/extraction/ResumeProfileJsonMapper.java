@@ -1,7 +1,10 @@
 package com.eightfold.candidate.service.extraction;
 
+import com.eightfold.candidate.domain.enums.LinkType;
 import com.eightfold.candidate.domain.enums.SourceType;
 import com.eightfold.candidate.domain.model.*;
+import com.eightfold.candidate.service.normalize.SkillSanitizer;
+import com.eightfold.candidate.service.parser.ResumeContactSanitizer;
 import com.eightfold.candidate.service.parser.ResumeTextExtractor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +16,9 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -49,24 +54,70 @@ public class ResumeProfileJsonMapper {
                 .location(text(node, "location"))
                 .yearsExperience(decimal(node, "yearsExperience"));
 
-        builder.emails(stringList(node, "emails"));
+        builder.emails(ResumeContactSanitizer.filterEmails(stringList(node, "emails")));
         builder.phones(stringList(node, "phones"));
         builder.skills(mapSkills(node.path("skills")));
+        builder.links(mapLinks(node.path("links"), stringList(node, "emails")));
         builder.experience(ResumeTextExtractor.filterExperience(mapExperience(node.path("experience"))));
         builder.education(ResumeTextExtractor.filterEducation(mapEducation(node.path("education"))));
         return builder.build();
     }
 
-    private List<ParsedSkillDTO> mapSkills(JsonNode skills) {
-        List<ParsedSkillDTO> result = new ArrayList<>();
-        if (!skills.isArray()) {
-            return result;
-        }
-        for (JsonNode skill : skills) {
-            String name = skill.isTextual() ? skill.asText() : text(skill, "name");
-            if (name != null && !name.isBlank()) {
-                result.add(ParsedSkillDTO.builder().name(name.trim()).build());
+    private List<ParsedLinkDTO> mapLinks(JsonNode linksNode, List<String> rawEmails) {
+        List<ParsedLinkDTO> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        if (linksNode.isArray()) {
+            for (JsonNode item : linksNode) {
+                String url = item.isTextual() ? item.asText() : text(item, "url");
+                if (url == null || url.isBlank()) {
+                    continue;
+                }
+                LinkType type = parseLinkType(text(item, "type"), url);
+                String normalized = normalizeLinkUrl(url.trim());
+                if (seen.add(normalized.toLowerCase())) {
+                    result.add(ParsedLinkDTO.builder().type(type).url(normalized).build());
+                }
             }
+        }
+        for (ParsedLinkDTO recovered : ResumeContactSanitizer.linksFromMisplacedContacts(rawEmails, List.of())) {
+            if (seen.add(recovered.getUrl().toLowerCase())) {
+                result.add(recovered);
+            }
+        }
+        return result;
+    }
+
+    private static LinkType parseLinkType(String raw, String url) {
+        if (raw != null && !raw.isBlank()) {
+            try {
+                return LinkType.valueOf(raw.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                // fall through
+            }
+        }
+        return ResumeContactSanitizer.inferLinkType(url);
+    }
+
+    private static String normalizeLinkUrl(String url) {
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return url;
+        }
+        return "https://" + url;
+    }
+
+    private List<ParsedSkillDTO> mapSkills(JsonNode skills) {
+        List<String> rawNames = new ArrayList<>();
+        if (skills.isArray()) {
+            for (JsonNode skill : skills) {
+                String name = skill.isTextual() ? skill.asText() : text(skill, "name");
+                if (name != null && !name.isBlank()) {
+                    rawNames.add(name.trim());
+                }
+            }
+        }
+        List<ParsedSkillDTO> result = new ArrayList<>();
+        for (String name : SkillSanitizer.expandToAtomicSkills(rawNames)) {
+            result.add(ParsedSkillDTO.builder().name(name).build());
         }
         return result;
     }

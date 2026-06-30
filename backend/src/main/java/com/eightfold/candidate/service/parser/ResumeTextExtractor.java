@@ -52,7 +52,7 @@ public class ResumeTextExtractor {
         return ParsedCandidateDTO.builder()
                 .sourceId(sourceId)
                 .fullName(fullName)
-                .emails(emails)
+                .emails(ResumeContactSanitizer.filterEmails(emails))
                 .phones(phones)
                 .skills(skills)
                 .experience(experience)
@@ -207,7 +207,27 @@ public class ResumeTextExtractor {
                 "professional experience", "work experience", "employment history", "education", "skills")) {
             return false;
         }
+        if (looksLikeProjectEntry(company, title)) {
+            return false;
+        }
         return exp.getStartDate() != null;
+    }
+
+    private static boolean looksLikeProjectEntry(String company, String title) {
+        String companyLower = company == null ? "" : company.toLowerCase();
+        String titleLower = title == null ? "" : title.toLowerCase();
+        if (companyLower.contains(" with ") || titleLower.contains(" with ")) {
+            return true;
+        }
+        if (companyLower.contains("shortener") || companyLower.contains("extraction system")
+                || companyLower.contains("management system") || companyLower.contains("platform")) {
+            return true;
+        }
+        if (titleLower.contains("shortener") || titleLower.contains("extraction system")
+                || titleLower.contains("management system")) {
+            return true;
+        }
+        return false;
     }
 
     private static final Pattern INSTITUTION_KEYWORD = Pattern.compile(
