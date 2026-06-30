@@ -1,0 +1,20 @@
+Thangaraj M
+Software Development Engineer II
+thangaraj@example.com | +917010791192 | Coimbatore, IN
+
+EDUCATION
+Sri Eshwar College of Engineering, Coimbatore, IN 2018-2022
+Bachelor of Engineering (Electronics and Communication Engineering) CGPA- 8.1
+
+WORK EXPERIENCE
+Amazon
+Software Development Engineer II
+Jan 2022 - Present
+- Delivered features across Agile Scrum sprints in a cross-functional team.
+- Implemented Spring Validation and server-side checks for reliable data handling.
+
+PROJECTS
+Built an automated solution for addressing website accessibility issues.
+
+SKILLS
+Java, Spring Boot, React, AWS, SQL

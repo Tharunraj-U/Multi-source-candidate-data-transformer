@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { Eye, Filter, RefreshCw, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteCandidate, listCandidates, reprocessCandidate } from '../api/client'
@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Alert, EmptyState, Spinner } from '../components/ui/Feedback'
+import { EmailValidationIcon } from '../components/EmailValidation'
 import { Input, Select } from '../components/ui/Input'
 import type { CandidateStatus } from '../types/candidate'
 import { confidenceColor, formatConfidence, formatDate, statusColor } from '../lib/utils'
@@ -89,6 +90,17 @@ export function CandidateListPage() {
     return dir === 'asc' ? ' ↑' : ' ↓'
   }
 
+  const hasActiveFilters = Boolean(debouncedSearch || minConfidence || company || status)
+
+  const clearFilters = () => {
+    setSearch('')
+    setDebouncedSearch('')
+    setMinConfidence('')
+    setCompany('')
+    setStatus('')
+    setPage(0)
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -100,53 +112,84 @@ export function CandidateListPage() {
       {error && <Alert message={(error as Error).message} variant="error" />}
 
       <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 py-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-brand-600" />
+            <CardTitle className="text-base">Filters</CardTitle>
+            {hasActiveFilters && (
+              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+                Active
+              </span>
+            )}
+          </div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
+              <X className="h-4 w-4" />
+              Clear all
+            </Button>
+          )}
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="relative sm:col-span-2">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
+        <CardContent className="space-y-4 pt-2">
+          <div className="grid gap-4 lg:grid-cols-12">
+            <div className="lg:col-span-6">
+              <Input
+                label="Search"
                 type="search"
                 placeholder="Search name, email, company…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-10 w-full rounded-lg border border-border bg-white pl-10 pr-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
-            <Input
-              label="Min confidence"
-              type="number"
-              min={0}
-              max={1}
-              step={0.1}
-              placeholder="0.0 – 1.0"
-              value={minConfidence}
-              onChange={(e) => setMinConfidence(e.target.value)}
-            />
-            <Input
-              label="Company"
-              placeholder="Filter by company"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-            />
-            <Select
-              label="Status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as CandidateStatus | '')}
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-            <Select label="Page size" value={size} onChange={(e) => setSize(Number(e.target.value))}>
-              <option value={20}>20 per page</option>
-              <option value={50}>50 per page</option>
-              <option value={100}>100 per page</option>
-            </Select>
+            <div className="lg:col-span-3">
+              <Input
+                label="Min confidence"
+                type="number"
+                min={0}
+                max={1}
+                step={0.1}
+                placeholder="0.0 – 1.0"
+                value={minConfidence}
+                onChange={(e) => setMinConfidence(e.target.value)}
+              />
+            </div>
+            <div className="lg:col-span-3">
+              <Input
+                label="Company"
+                placeholder="Filter by company"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12">
+            <div className="lg:col-span-3">
+              <Select
+                label="Status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as CandidateStatus | '')}
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="lg:col-span-3">
+              <Select label="Page size" value={size} onChange={(e) => setSize(Number(e.target.value))}>
+                <option value={20}>20 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+              </Select>
+            </div>
+            {data && (
+              <div className="flex items-end lg:col-span-6 lg:justify-end">
+                <p className="pb-2.5 text-sm text-muted-foreground">
+                  {data.totalElements} candidate{data.totalElements === 1 ? '' : 's'} found
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -225,7 +268,14 @@ export function CandidateListPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {candidate.primaryEmail ?? '—'}
+                        {candidate.primaryEmail ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span>{candidate.primaryEmail}</span>
+                            <EmailValidationIcon status={candidate.primaryEmailValidationStatus} />
+                          </span>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{candidate.currentCompany ?? '—'}</td>
                       <td className="px-4 py-3 text-muted-foreground">

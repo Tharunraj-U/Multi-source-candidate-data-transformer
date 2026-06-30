@@ -1,0 +1,112 @@
+{
+  "candidateId": "CAND-10001",
+  "full_name": "John Michael Doe",
+  "headline": "Senior Java Full Stack Developer",
+  "emails": [
+    "john.doe@gmail.com",
+    "john.doe@outlook.com"
+  ],
+  "phones": [
+    "+1-555-123-4567"
+  ],
+  "location": {
+    "city": "San Francisco",
+    "state": "California",
+    "country": "USA"
+  },
+  "linkedin": "https://www.linkedin.com/in/john-doe",
+  "github": "https://github.com/johndoe",
+  "portfolio": "https://johndoe.dev",
+  "summary": "Senior Full Stack Engineer with 8+ years of experience building scalable enterprise applications using Java, Spring Boot, React, AWS, and Kubernetes.",
+  "experience": [
+    {
+      "company": "Google",
+      "title": "Senior Software Engineer",
+      "employmentType": "Full-time",
+      "startDate": "2021-05",
+      "endDate": null,
+      "current": true,
+      "location": "Mountain View, CA",
+      "description": "Developed distributed backend services for cloud infrastructure."
+    },
+    {
+      "company": "Amazon",
+      "title": "Software Engineer",
+      "employmentType": "Full-time",
+      "startDate": "2018-01",
+      "endDate": "2021-04",
+      "current": false,
+      "location": "Seattle, WA",
+      "description": "Built REST APIs and microservices using Spring Boot."
+    }
+  ],
+  "education": [
+    {
+      "institution": "Stanford University",
+      "degree": "Bachelor of Science",
+      "fieldOfStudy": "Computer Science",
+      "startYear": 2012,
+      "endYear": 2016
+    }
+  ],
+  "skills": [
+    "Java",
+    "Spring Boot",
+    "React",
+    "JavaScript",
+    "TypeScript",
+    "Node.js",
+    "AWS",
+    "Docker",
+    "Kubernetes",
+    "PostgreSQL",
+    "MongoDB",
+    "Redis",
+    "Git",
+    "CI/CD"
+  ],
+  "certifications": [
+    {
+      "name": "AWS Certified Solutions Architect - Associate",
+      "issuer": "Amazon Web Services",
+      "date": "2023-06"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Enterprise Hiring Platform",
+      "description": "Built an AI-powered recruitment platform supporting resume parsing and candidate ranking.",
+      "technologies": [
+        "Spring Boot",
+        "React",
+        "OpenAI",
+        "PostgreSQL"
+      ],
+      "github": "https://github.com/johndoe/hiring-platform"
+    }
+  ],
+  "languages": [
+    {
+      "language": "English",
+      "proficiency": "Native"
+    },
+    {
+      "language": "Spanish",
+      "proficiency": "Professional"
+    }
+  ],
+  "workAuthorization": {
+    "country": "USA",
+    "status": "Citizen"
+  },
+  "salaryExpectation": {
+    "currency": "USD",
+    "amount": 180000
+  },
+  "noticePeriod": "30 Days",
+  "availability": "Immediate",
+  "totalExperienceYears": 8.5,
+  "resumeSource": "ATS",
+  "createdAt": "2026-06-30T12:00:00Z",
+  "updatedAt": "2026-06-30T12:00:00Z"
+}

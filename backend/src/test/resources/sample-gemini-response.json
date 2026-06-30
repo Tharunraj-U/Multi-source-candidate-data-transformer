@@ -1,0 +1,24 @@
+{
+  "fullName": "Thangaraj M",
+  "headline": "Software Development Engineer II",
+  "location": "Coimbatore, IN",
+  "yearsExperience": 4,
+  "emails": ["thangaraj@example.com"],
+  "phones": ["+917010791192"],
+  "skills": ["Java", "Spring Boot", "React", "AWS", "SQL"],
+  "experience": [{
+    "company": "Amazon",
+    "title": "Software Development Engineer II",
+    "startDate": "2022-01",
+    "endDate": null,
+    "current": true,
+    "description": "Delivered features across Agile Scrum sprints in a cross-functional team."
+  }],
+  "education": [{
+    "institution": "Sri Eshwar College of Engineering, Coimbatore, IN 2018-2022",
+    "degree": "Bachelor of Engineering (Electronics and Communication Engineering)",
+    "fieldOfStudy": "Electronics and Communication Engineering",
+    "startDate": null,
+    "endDate": null
+  }]
+}

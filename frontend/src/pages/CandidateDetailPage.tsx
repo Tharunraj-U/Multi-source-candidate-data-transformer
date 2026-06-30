@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
 import { Alert, EmptyState, Spinner } from '../components/ui/Feedback'
+import { EmailWithValidation } from '../components/EmailValidation'
 import { Tabs } from '../components/ui/Tabs'
 import type { ProvenanceEntry } from '../types/candidate'
 import { confidenceColor, formatConfidence, formatDate, statusColor } from '../lib/utils'
@@ -163,7 +164,9 @@ export function CandidateDetailPage() {
                   {candidate.emails?.length ? (
                     <ul className="space-y-1">
                       {candidate.emails.map((email) => (
-                        <li key={email.address}>{email.address}</li>
+                        <li key={email.address}>
+                          <EmailWithValidation email={email} />
+                        </li>
                       ))}
                     </ul>
                   ) : (

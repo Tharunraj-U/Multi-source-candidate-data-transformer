@@ -4,6 +4,7 @@ import com.eightfold.candidate.domain.entity.*;
 import com.eightfold.candidate.domain.enums.LinkType;
 import com.eightfold.candidate.domain.enums.SourceType;
 import com.eightfold.candidate.domain.model.*;
+import com.eightfold.candidate.service.normalize.EmailValidationService;
 import com.eightfold.candidate.service.parser.ResumeTextExtractor;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,12 @@ public class CandidateProfileMerger {
 
     private static final List<SourceType> PRIORITY = List.of(
             SourceType.RESUME, SourceType.GITHUB, SourceType.ATS_JSON, SourceType.RECRUITER_CSV);
+
+    private final EmailValidationService emailValidation;
+
+    public CandidateProfileMerger(EmailValidationService emailValidation) {
+        this.emailValidation = emailValidation;
+    }
 
     public void merge(Candidate candidate, List<ParsedCandidateDTO> parsedList) {
         parsedList.sort(Comparator.comparingInt(p -> priorityIndex(p.getSourceType())));
@@ -65,6 +72,7 @@ public class CandidateProfileMerger {
                         .emailAddress(email)
                         .primary(candidate.getEmails().isEmpty())
                         .confidence(baseConfidence(parsed.getSourceType()))
+                        .validationStatus(emailValidation.validate(email))
                         .build());
                 existing.add(email.toLowerCase());
             }
@@ -127,7 +135,7 @@ public class CandidateProfileMerger {
 
     private void mergeEducation(Candidate candidate, ParsedCandidateDTO parsed) {
         if (parsed.getEducation() == null) return;
-        for (ParsedEducationDTO edu : parsed.getEducation()) {
+        for (ParsedEducationDTO edu : ResumeTextExtractor.filterEducation(parsed.getEducation())) {
             candidate.getEducation().add(CandidateEducation.builder()
                     .candidate(candidate)
                     .institution(edu.getInstitution() != null ? edu.getInstitution() : "Unknown")

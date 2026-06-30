@@ -75,11 +75,13 @@ public class CandidateMapper {
     }
 
     public ApiDtos.CandidateListItemDto toListItem(Candidate c) {
-        String primaryEmail = c.getEmails().stream()
+        CandidateEmail primary = c.getEmails().stream()
                 .filter(CandidateEmail::isPrimary)
-                .map(CandidateEmail::getEmailAddress)
                 .findFirst()
-                .orElse(c.getEmails().stream().map(CandidateEmail::getEmailAddress).findFirst().orElse(null));
+                .orElse(c.getEmails().stream().findFirst().orElse(null));
+
+        String primaryEmail = primary != null ? primary.getEmailAddress() : null;
+        String primaryEmailValidationStatus = primary != null ? primary.getValidationStatus() : null;
 
         String currentCompany = c.getExperience().stream()
                 .filter(CandidateExperience::isCurrent)
@@ -96,6 +98,7 @@ public class CandidateMapper {
                 .candidateId(c.getCandidateId())
                 .fullName(c.getFullName())
                 .primaryEmail(primaryEmail)
+                .primaryEmailValidationStatus(primaryEmailValidationStatus)
                 .currentCompany(currentCompany)
                 .yearsExperience(c.getYearsExperience())
                 .overallConfidence(c.getOverallConfidence())

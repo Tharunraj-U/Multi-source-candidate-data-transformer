@@ -34,6 +34,17 @@ public class ProcessingJob {
     @Column(name = "started_at")
     private Instant startedAt;
 
+    @Column(name = "last_attempt_at")
+    private Instant lastAttemptAt;
+
+    @Column(name = "attempt_count", nullable = false)
+    @Builder.Default
+    private int attemptCount = 0;
+
+    @Column(name = "max_attempts", nullable = false)
+    @Builder.Default
+    private int maxAttempts = 3;
+
     @Column(name = "completed_at")
     private Instant completedAt;
 

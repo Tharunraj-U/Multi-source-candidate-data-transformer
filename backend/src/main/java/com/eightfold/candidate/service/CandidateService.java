@@ -118,6 +118,8 @@ public class CandidateService {
                 .jobId(job.getJobId())
                 .candidateId(candidateId)
                 .status(job.getStatus())
+                .attemptCount(job.getAttemptCount())
+                .maxAttempts(job.getMaxAttempts())
                 .build();
     }
 
@@ -127,6 +129,12 @@ public class CandidateService {
 
     public ApiDtos.ProcessResponseDto startProcessing(UUID candidateId) {
         ApiDtos.ProcessResponseDto response = enqueueProcessing(candidateId);
+        triggerProcessing(candidateId, response.getJobId());
+        return response;
+    }
+
+    public ApiDtos.ProcessResponseDto startReprocessing(UUID candidateId) {
+        ApiDtos.ProcessResponseDto response = reprocess(candidateId);
         triggerProcessing(candidateId, response.getJobId());
         return response;
     }
@@ -162,6 +170,8 @@ public class CandidateService {
                 .jobId(job.getJobId())
                 .candidateId(candidateId)
                 .status(job.getStatus())
+            .attemptCount(job.getAttemptCount())
+            .maxAttempts(job.getMaxAttempts())
                 .errorMessage(job.getErrorMessage())
                 .build();
     }

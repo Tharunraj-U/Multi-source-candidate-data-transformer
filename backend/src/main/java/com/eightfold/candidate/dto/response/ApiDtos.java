@@ -40,6 +40,8 @@ public final class ApiDtos {
         private UUID jobId;
         private UUID candidateId;
         private JobStatus status;
+        private int attemptCount;
+        private int maxAttempts;
     }
 
     @Data
@@ -48,6 +50,8 @@ public final class ApiDtos {
         private UUID jobId;
         private UUID candidateId;
         private JobStatus status;
+        private int attemptCount;
+        private int maxAttempts;
         private String errorMessage;
     }
 
@@ -151,6 +155,7 @@ public final class ApiDtos {
         private UUID candidateId;
         private String fullName;
         private String primaryEmail;
+        private String primaryEmailValidationStatus;
         private String currentCompany;
         private BigDecimal yearsExperience;
         private BigDecimal overallConfidence;

@@ -42,8 +42,7 @@ public class CandidateController {
 
     @PostMapping("/process")
     public ResponseEntity<ApiDtos.ProcessResponseDto> process(@Valid @RequestBody ProcessRequest request) {
-        ApiDtos.ProcessResponseDto response = candidateService.enqueueProcessing(request.getCandidateId());
-        candidateService.triggerProcessing(request.getCandidateId(), response.getJobId());
+        ApiDtos.ProcessResponseDto response = candidateService.startProcessing(request.getCandidateId());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
@@ -76,8 +75,7 @@ public class CandidateController {
 
     @PostMapping("/{id}/reprocess")
     public ResponseEntity<ApiDtos.ProcessResponseDto> reprocess(@PathVariable UUID id) {
-        ApiDtos.ProcessResponseDto response = candidateService.reprocess(id);
-        candidateService.triggerProcessing(id, response.getJobId());
+        ApiDtos.ProcessResponseDto response = candidateService.startReprocessing(id);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 

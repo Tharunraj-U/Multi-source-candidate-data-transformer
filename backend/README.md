@@ -1,48 +1,58 @@
 # Candidate Profile System — Backend
 
-Part of the [Multi-Source Candidate Data Transformer](../README.md). Spring Boot 3.4 / Java 21 module for multi-source candidate profile ingestion, parsing, merge, and API.
+Part of the [Multi-Source Candidate Data Transformer](../README.md).
 
-## Infrastructure
+## Runtime
 
-| Service | How to run |
-|---------|------------|
-| **MySQL** | Local MySQL 8 (`MySQL80` service) — `root` / `root` |
-| **Redis** | Optional — `docker compose up -d` (rate limiting / future cache) |
-
-Database `candidate_db` is created automatically on first run (`createDatabaseIfNotExist=true`).
+| Service | Required | Notes |
+|---------|----------|-------|
+| MySQL 8 | Yes | Local dev defaults to `candidate_db` with `root` / `root` |
+| Ollama desktop app | Optional | Required only when `OLLAMA_ENABLED=true` |
 
 ## Run
 
 ```bash
-# Optional Redis
-docker compose up -d
-
-# Configure env (see .env.example)
 cp .env.example .env
-
-# Start app
 mvn spring-boot:run
 ```
 
-Health check: http://localhost:8080/actuator/health
+Default endpoints:
+
+- API: `http://localhost:8080`
+- Health: `http://localhost:8080/actuator/health`
+- Ollama: `http://localhost:11434`
+
+## Processing design
+
+The backend does not use Redis or an external queue.
+
+1. `POST /api/v1/candidate/upload` saves the candidate first with status `DRAFT`.
+2. Each uploaded file or URL becomes a `raw_source` row with status `PENDING`.
+3. `POST /api/v1/candidate/process` creates a `processing_job` row with status `QUEUED`.
+4. A Spring `@Async` worker marks the job `RUNNING` and processes each source.
+5. Unexpected worker failures are retried up to `APP_PROCESSING_MAX_ATTEMPTS`.
+6. Per-source parse failures are stored on the `raw_source` record.
+7. Final candidate status becomes `COMPLETED`, `PARTIAL`, or `FAILED`.
+
+User-visible failure reporting is available through `GET /api/v1/candidate/{id}/job/{jobId}`. That response includes the current `status`, `attemptCount`, `maxAttempts`, and `errorMessage`.
 
 ## Configuration
 
-Key env vars in `backend/.env`:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Local Ollama API |
+| `OLLAMA_MODEL` | `qwen2.5-coder:3b` | Installed Ollama model |
+| `OLLAMA_ENABLED` | `true` | `false` switches to non-LLM extraction paths |
+| `RESUME_TEXT_PROVIDER` | `tika` | `tika` or `docling` |
+| `APP_PROCESSING_MAX_ATTEMPTS` | `3` | Max async worker attempts for unexpected failures |
 
-- `GEMINI_API_KEY` — structured resume extraction (recommended)
-- `GITHUB_TOKEN` — optional, higher GitHub API rate limits
-- `DB_PASSWORD` — MySQL password
+## Resume pipeline
 
-## Source parsers
+`Docling or Tika -> resume text -> Ollama extraction -> parsed JSON -> candidate merge`
 
-| Parser | Input |
-|--------|-------|
-| `ResumeParserService` | PDF/DOCX via Tika → Gemini (Java REST) + heuristic fallback |
-| `GitHubService` | GitHub REST API (profile metadata, languages, avatar) |
-| `CsvImportService` | Recruiter CSV |
-| `AtsJsonService` | ATS JSON blob |
+## Validation
 
-Resume flow: **Tika text → Gemini JSON → merge with `ResumeTextExtractor` when sparse.**
-
-Field-level confidence scores are written to `candidate_confidence` during merge for the Confidence tab.
+```bash
+mvn test
+mvn test -Dtest=OllamaIntegrationTest
+```

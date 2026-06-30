@@ -4,3 +4,14 @@ services:
     container_name: candidate-redis
     ports:
       - "6379:6379"
+
+  # Optional Docling — PDF/DOCX → text: docker compose --profile docling up -d docling
+  docling:
+    image: quay.io/docling-project/docling-serve-cpu:latest
+    container_name: candidate-docling
+    ports:
+      - "5001:5001"
+    environment:
+      - DOCLING_SERVE_ENABLE_UI=true
+    profiles:
+      - docling

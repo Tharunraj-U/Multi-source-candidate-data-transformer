@@ -40,8 +40,14 @@ C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transfo
 C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\CandidateProcessingService.java
 C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\CandidateService.java
 C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\CandidateSpecifications.java
-C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\extraction\GeminiProfileExtractionService.java
+C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\extraction\DoclingServeClient.java
+C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\extraction\OllamaProfileExtractionService.java
+C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\extraction\ResumeExtractionPrompt.java
+C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\extraction\ResumeLlmExtractionService.java
+C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\extraction\ResumeProfileJsonMapper.java
+C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\extraction\ResumeTextExtractionService.java
 C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\merge\CandidateProfileMerger.java
+C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\normalize\EmailValidationService.java
 C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\parser\AtsJsonParserService.java
 C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\parser\GitHubService.java
 C:\Users\Administrator\Desktop\eight-fold-ai\Multi-source-candidate-data-transformer\backend\src\main\java\com\eightfold\candidate\service\parser\RecruiterCsvParserService.java

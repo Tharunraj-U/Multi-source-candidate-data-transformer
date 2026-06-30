@@ -210,6 +210,9 @@ public class ResumeTextExtractor {
         return exp.getStartDate() != null;
     }
 
+    private static final Pattern INSTITUTION_KEYWORD = Pattern.compile(
+            "(?i)\\b(university|college|institute|school|academy|polytechnic)\\b");
+
     private static boolean isValidEducation(ParsedEducationDTO edu) {
         if (edu == null) {
             return false;
@@ -219,12 +222,35 @@ public class ResumeTextExtractor {
         if (institution != null && isSectionHeader(institution, "education", "academic", "academics", "experience", "skills")) {
             return false;
         }
-        boolean hasInstitution = isValidRoleLine(institution);
+        if (institution != null && looksLikeSentenceNotSchool(institution)) {
+            return false;
+        }
+        boolean hasInstitution = looksLikeInstitution(institution);
         boolean hasDegree = degree != null && !degree.isBlank() && !isBulletLine(degree);
         if (!hasInstitution && !hasDegree) {
             return false;
         }
+        if (hasInstitution && !isValidRoleLine(institution)) {
+            return false;
+        }
         return true;
+    }
+
+    private static boolean looksLikeInstitution(String line) {
+        if (line == null || line.isBlank()) {
+            return false;
+        }
+        return INSTITUTION_KEYWORD.matcher(line).find();
+    }
+
+    private static boolean looksLikeSentenceNotSchool(String line) {
+        String lower = line.toLowerCase();
+        if (line.endsWith(".") && !looksLikeInstitution(line)) {
+            return true;
+        }
+        return lower.contains("solution") || lower.contains("automated")
+                || lower.contains("addressing") || lower.contains("implemented")
+                || lower.contains("developed") || lower.contains("delivered");
     }
 
     private static boolean isValidRoleLine(String line) {
@@ -253,6 +279,8 @@ public class ResumeTextExtractor {
                 || trimmed.startsWith("- ") || trimmed.startsWith("– ")
                 || trimmed.matches("^\\d+\\s*[.)]\\s+.+");
     }
+
+    private static String capitalizeSkill(String skill) {
         if ("node.js".equals(skill)) return "Node.js";
         if (skill.length() <= 3) return skill.toUpperCase();
         return Character.toUpperCase(skill.charAt(0)) + skill.substring(1);

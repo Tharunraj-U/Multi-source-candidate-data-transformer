@@ -111,6 +111,7 @@ export interface CandidateListItem {
   candidateId: string
   fullName?: string
   primaryEmail?: string
+  primaryEmailValidationStatus?: 'valid' | 'invalid' | 'unknown'
   currentCompany?: string
   yearsExperience?: number
   overallConfidence?: number

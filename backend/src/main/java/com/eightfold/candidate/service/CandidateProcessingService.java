@@ -16,6 +16,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -28,6 +30,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 @Slf4j
 @Service
@@ -41,6 +45,11 @@ public class CandidateProcessingService {
     private final CandidateProfileMerger merger;
     private final ProfilePictureService profilePictureService;
     private final PlatformTransactionManager transactionManager;
+    @Qualifier("processingExecutor")
+    private final Executor processingExecutor;
+
+    @Value("${app.processing.max-attempts:3}")
+    private int maxAttempts;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -58,6 +67,8 @@ public class CandidateProcessingService {
         ProcessingJob job = ProcessingJob.builder()
                 .candidate(candidate)
                 .status(JobStatus.QUEUED)
+                .attemptCount(0)
+                .maxAttempts(maxAttempts)
                 .build();
         job = processingJobRepository.save(job);
         candidateRepository.save(candidate);
@@ -65,22 +76,60 @@ public class CandidateProcessingService {
     }
 
     @Async("processingExecutor")
-    @Transactional
     public void runAsync(UUID candidateId, UUID jobId) {
-        ProcessingJob job = processingJobRepository.findById(jobId).orElseThrow();
-        job.setStatus(JobStatus.RUNNING);
-        job.setStartedAt(Instant.now());
-        processingJobRepository.save(job);
-
-        Candidate candidate = candidateRepository.findByCandidateIdAndDeletedFalse(candidateId)
-                .orElseThrow();
-
+        AttemptState attemptState = startAttempt(candidateId, jobId);
+        if (attemptState == null) {
+            return;
+        }
         try {
-            runProcessing(candidate, job, candidateId);
+            runProcessing(candidateId, jobId);
         } catch (Exception ex) {
-            log.error("Processing failed for candidate {}", candidateId, ex);
+            log.error("Processing attempt {}/{} failed for candidate {}",
+                    attemptState.attemptCount(), attemptState.maxAttempts(), candidateId, ex);
+            if (attemptState.attemptCount() < attemptState.maxAttempts()) {
+                markQueuedForRetryInNewTransaction(jobId, ex.getMessage());
+                scheduleRetry(candidateId, jobId, attemptState.attemptCount() + 1, attemptState.maxAttempts());
+                return;
+            }
             markFailedInNewTransaction(candidateId, jobId, ex.getMessage());
         }
+    }
+
+    private AttemptState startAttempt(UUID candidateId, UUID jobId) {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return template.execute(status -> {
+            ProcessingJob job = processingJobRepository.findById(jobId).orElseThrow();
+            if (job.getStatus() == JobStatus.COMPLETED || job.getStatus() == JobStatus.FAILED) {
+                return null;
+            }
+
+            Candidate candidate = candidateRepository.findByCandidateIdAndDeletedFalse(candidateId)
+                    .orElseThrow();
+
+            Instant now = Instant.now();
+            job.setStatus(JobStatus.RUNNING);
+            job.setLastAttemptAt(now);
+            job.setAttemptCount(job.getAttemptCount() + 1);
+            job.setErrorMessage(null);
+            if (job.getStartedAt() == null) {
+                job.setStartedAt(now);
+            }
+            candidate.setStatus(CandidateStatus.PROCESSING);
+            processingJobRepository.save(job);
+            candidateRepository.save(candidate);
+            return new AttemptState(job.getAttemptCount(), job.getMaxAttempts());
+        });
+    }
+
+    private void runProcessing(UUID candidateId, UUID jobId) {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.executeWithoutResult(status -> {
+            ProcessingJob job = processingJobRepository.findById(jobId).orElseThrow();
+            Candidate candidate = candidateRepository.findByCandidateIdAndDeletedFalse(candidateId)
+                    .orElseThrow();
+            runProcessing(candidate, job, candidateId);
+        });
     }
 
     private void runProcessing(Candidate candidate, ProcessingJob job, UUID candidateId) {
@@ -162,6 +211,28 @@ public class CandidateProcessingService {
         });
     }
 
+    private void markQueuedForRetryInNewTransaction(UUID jobId, String errorMessage) {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        template.executeWithoutResult(status -> {
+            ProcessingJob job = processingJobRepository.findById(jobId).orElseThrow();
+            job.setStatus(JobStatus.QUEUED);
+            job.setErrorMessage(errorMessage != null ? errorMessage : "Processing failed");
+            job.setCompletedAt(null);
+            processingJobRepository.save(job);
+        });
+    }
+
+    private void scheduleRetry(UUID candidateId, UUID jobId, int nextAttempt, int maxAttempts) {
+        try {
+            processingExecutor.execute(() -> runAsync(candidateId, jobId));
+            log.info("Scheduled retry attempt {}/{} for candidate {}", nextAttempt, maxAttempts, candidateId);
+        } catch (RejectedExecutionException ex) {
+            log.error("Failed to schedule retry attempt {}/{} for candidate {}", nextAttempt, maxAttempts, candidateId, ex);
+            markFailedInNewTransaction(candidateId, jobId, "Retry scheduling failed: " + ex.getMessage());
+        }
+    }
+
     private void clearChildCollections(Candidate candidate) {
         candidate.getEmails().clear();
         candidate.getPhones().clear();
@@ -173,4 +244,6 @@ public class CandidateProcessingService {
         candidate.getProvenance().clear();
         entityManager.flush();
     }
+
+    private record AttemptState(int attemptCount, int maxAttempts) {}
 }
