@@ -32,12 +32,11 @@ public class CandidateController {
             @RequestParam(value = "resume", required = false) MultipartFile resume,
             @RequestParam(value = "recruiterCsv", required = false) MultipartFile recruiterCsv,
             @RequestParam(value = "atsJson", required = false) MultipartFile atsJson,
-            @RequestParam(value = "linkedInUrl", required = false) String linkedInUrl,
             @RequestParam(value = "gitHubUrl", required = false) String gitHubUrl,
             @RequestParam(value = "runtimeConfig", required = false) String runtimeConfig) throws IOException {
 
         ApiDtos.UploadResponseDto response = candidateService.upload(
-                resume, recruiterCsv, atsJson, linkedInUrl, gitHubUrl, runtimeConfig);
+                resume, recruiterCsv, atsJson, gitHubUrl, runtimeConfig);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

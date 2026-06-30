@@ -27,7 +27,6 @@ export function UploadPage() {
   const [resume, setResume] = useState<File | null>(null)
   const [recruiterCsv, setRecruiterCsv] = useState<File | null>(null)
   const [atsJson, setAtsJson] = useState<File | null>(null)
-  const [linkedInUrl, setLinkedInUrl] = useState('')
   const [gitHubUrl, setGitHubUrl] = useState('')
   const [runtimeConfig, setRuntimeConfig] = useState(DEFAULT_RUNTIME_CONFIG)
   const [configError, setConfigError] = useState<string>()
@@ -83,7 +82,7 @@ export function UploadPage() {
   }, [runtimeConfig])
 
   const hasInput =
-    resume || recruiterCsv || atsJson || linkedInUrl.trim() || gitHubUrl.trim()
+    resume || recruiterCsv || atsJson || gitHubUrl.trim()
 
   const handleUpload = () => {
     if (!hasInput) {
@@ -97,7 +96,6 @@ export function UploadPage() {
     if (resume) formData.append('resume', resume)
     if (recruiterCsv) formData.append('recruiterCsv', recruiterCsv)
     if (atsJson) formData.append('atsJson', atsJson)
-    if (linkedInUrl.trim()) formData.append('linkedInUrl', linkedInUrl.trim())
     if (gitHubUrl.trim()) formData.append('gitHubUrl', gitHubUrl.trim())
     if (runtimeConfig.trim()) formData.append('runtimeConfig', runtimeConfig.trim())
     uploadMutation.mutate(formData)
@@ -178,12 +176,6 @@ export function UploadPage() {
                 onFileChange={setAtsJson}
               />
             </div>
-            <Input
-              label="LinkedIn Profile URL"
-              placeholder="https://linkedin.com/in/username"
-              value={linkedInUrl}
-              onChange={(e) => setLinkedInUrl(e.target.value)}
-            />
             <Input
               label="GitHub Profile URL"
               placeholder="https://github.com/username"

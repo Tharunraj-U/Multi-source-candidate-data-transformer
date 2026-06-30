@@ -7,8 +7,8 @@ import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -65,47 +65,47 @@ public class Candidate {
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<RawSource> rawSources = new ArrayList<>();
+    private Set<RawSource> rawSources = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<CandidateEmail> emails = new ArrayList<>();
+    private Set<CandidateEmail> emails = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<CandidatePhone> phones = new ArrayList<>();
+    private Set<CandidatePhone> phones = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<CandidateSkill> skills = new ArrayList<>();
+    private Set<CandidateSkill> skills = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<CandidateExperience> experience = new ArrayList<>();
+    private Set<CandidateExperience> experience = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<CandidateEducation> education = new ArrayList<>();
+    private Set<CandidateEducation> education = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<CandidateLink> links = new ArrayList<>();
+    private Set<CandidateLink> links = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<CandidateProvenance> provenance = new ArrayList<>();
+    private Set<CandidateProvenance> provenance = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<CandidateConfidence> confidenceScores = new ArrayList<>();
+    private Set<CandidateConfidence> confidenceScores = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<RuntimeConfig> runtimeConfigs = new ArrayList<>();
+    private Set<RuntimeConfig> runtimeConfigs = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<ProcessingJob> processingJobs = new ArrayList<>();
+    private Set<ProcessingJob> processingJobs = new LinkedHashSet<>();
 
     @PreUpdate
     void onUpdate() {

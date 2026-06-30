@@ -4,6 +4,7 @@ import com.eightfold.candidate.domain.entity.*;
 import com.eightfold.candidate.domain.enums.LinkType;
 import com.eightfold.candidate.domain.enums.SourceType;
 import com.eightfold.candidate.domain.model.*;
+import com.eightfold.candidate.service.parser.ResumeTextExtractor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -14,8 +15,7 @@ import java.util.*;
 public class CandidateProfileMerger {
 
     private static final List<SourceType> PRIORITY = List.of(
-            SourceType.RESUME, SourceType.LINKEDIN, SourceType.GITHUB,
-            SourceType.ATS_JSON, SourceType.RECRUITER_CSV);
+            SourceType.RESUME, SourceType.GITHUB, SourceType.ATS_JSON, SourceType.RECRUITER_CSV);
 
     public void merge(Candidate candidate, List<ParsedCandidateDTO> parsedList) {
         parsedList.sort(Comparator.comparingInt(p -> priorityIndex(p.getSourceType())));
@@ -28,12 +28,10 @@ public class CandidateProfileMerger {
             mergeExperience(candidate, parsed);
             mergeEducation(candidate, parsed);
             mergeLinks(candidate, parsed);
-            if (parsed.getProfilePictureUrl() != null && candidate.getProfilePicturePath() == null) {
-                candidate.setProfilePicturePath(parsed.getProfilePictureUrl());
-            }
         }
 
         candidate.setOverallConfidence(computeOverall(parsedList));
+        populateFieldConfidence(candidate);
     }
 
     private int priorityIndex(SourceType type) {
@@ -112,7 +110,7 @@ public class CandidateProfileMerger {
 
     private void mergeExperience(Candidate candidate, ParsedCandidateDTO parsed) {
         if (parsed.getExperience() == null) return;
-        for (ParsedExperienceDTO exp : parsed.getExperience()) {
+        for (ParsedExperienceDTO exp : ResumeTextExtractor.filterExperience(parsed.getExperience())) {
             candidate.getExperience().add(CandidateExperience.builder()
                     .candidate(candidate)
                     .company(exp.getCompany() != null ? exp.getCompany() : "Unknown")
@@ -158,6 +156,29 @@ public class CandidateProfileMerger {
                 existing.add(link.getUrl());
             }
         }
+    }
+
+    private void populateFieldConfidence(Candidate candidate) {
+        candidate.getConfidenceScores().clear();
+        addConfidence(candidate, "full_name", candidate.getFullName() != null && !candidate.getFullName().isBlank()
+                ? score("0.95") : score("0.30"));
+        addConfidence(candidate, "emails", candidate.getEmails().isEmpty() ? score("0.30") : score("0.95"));
+        addConfidence(candidate, "phones", candidate.getPhones().isEmpty() ? score("0.30") : score("0.95"));
+        addConfidence(candidate, "experience", candidate.getExperience().isEmpty() ? score("0.30") : score("0.90"));
+        addConfidence(candidate, "education", candidate.getEducation().isEmpty() ? score("0.30") : score("0.90"));
+        addConfidence(candidate, "skills", candidate.getSkills().isEmpty() ? score("0.30") : score("0.85"));
+    }
+
+    private void addConfidence(Candidate candidate, String fieldPath, BigDecimal score) {
+        candidate.getConfidenceScores().add(CandidateConfidence.builder()
+                .candidate(candidate)
+                .fieldPath(fieldPath)
+                .score(score)
+                .build());
+    }
+
+    private BigDecimal score(String value) {
+        return new BigDecimal(value);
     }
 
     private BigDecimal baseConfidence(SourceType type) {

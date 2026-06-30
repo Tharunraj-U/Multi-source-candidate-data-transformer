@@ -1,6 +1,6 @@
 package com.eightfold.candidate.exception;
 
-import com.eightfold.candidate.exception.SourceParseException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -47,6 +47,15 @@ public class GlobalExceptionHandler {
                 .orElse("Validation failed");
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
         problem.setTitle("Validation Error");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ProblemDetail handleDataAccess(DataAccessException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.INTERNAL_SERVER_ERROR, "A database error occurred");
+        problem.setTitle("Database Error");
         problem.setProperty("timestamp", Instant.now());
         return problem;
     }

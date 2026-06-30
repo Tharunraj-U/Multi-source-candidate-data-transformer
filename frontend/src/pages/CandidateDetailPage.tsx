@@ -160,7 +160,15 @@ export function CandidateDetailPage() {
               <div>
                 <dt className="text-xs font-medium uppercase text-muted-foreground">Emails</dt>
                 <dd className="mt-1 text-foreground">
-                  {candidate.emails?.length ? candidate.emails.join(', ') : '—'}
+                  {candidate.emails?.length ? (
+                    <ul className="space-y-1">
+                      {candidate.emails.map((email) => (
+                        <li key={email.address}>{email.address}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    '—'
+                  )}
                 </dd>
               </div>
               <div>

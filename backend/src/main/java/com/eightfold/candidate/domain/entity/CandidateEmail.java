@@ -32,4 +32,7 @@ public class CandidateEmail {
 
     @Column(precision = 5, scale = 4)
     private BigDecimal confidence;
+
+    @Column(name = "validation_status", length = 20)
+    private String validationStatus;
 }

@@ -13,6 +13,7 @@ import com.eightfold.candidate.repository.ProcessingJobRepository;
 import com.eightfold.candidate.repository.RawSourceRepository;
 import com.eightfold.candidate.repository.RuntimeConfigRepository;
 import com.eightfold.candidate.service.storage.LocalFileStorageService;
+import com.eightfold.candidate.service.storage.ProfilePictureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,6 +42,7 @@ public class CandidateService {
     private final ProcessingJobRepository processingJobRepository;
     private final RuntimeConfigRepository runtimeConfigRepository;
     private final LocalFileStorageService fileStorage;
+    private final ProfilePictureService profilePictureService;
     private final CandidateMapper mapper;
     private final CandidateProcessingService processingService;
 
@@ -49,11 +51,10 @@ public class CandidateService {
             MultipartFile resume,
             MultipartFile recruiterCsv,
             MultipartFile atsJson,
-            String linkedInUrl,
             String gitHubUrl,
             String runtimeConfigJson) throws IOException {
 
-        if (!hasAnySource(resume, recruiterCsv, atsJson, linkedInUrl, gitHubUrl)) {
+        if (!hasAnySource(resume, recruiterCsv, atsJson, gitHubUrl)) {
             throw new IllegalArgumentException("At least one source is required");
         }
 
@@ -85,9 +86,6 @@ public class CandidateService {
                     atsJson.getOriginalFilename() != null ? atsJson.getOriginalFilename() : "ats.json",
                     atsJson.getInputStream());
             sources.add(createSource(candidate, SourceType.ATS_JSON, path, atsJson.getOriginalFilename(), null));
-        }
-        if (linkedInUrl != null && !linkedInUrl.isBlank()) {
-            sources.add(createSource(candidate, SourceType.LINKEDIN, null, null, linkedInUrl.trim()));
         }
         if (gitHubUrl != null && !gitHubUrl.isBlank()) {
             sources.add(createSource(candidate, SourceType.GITHUB, null, null, gitHubUrl.trim()));
@@ -240,7 +238,7 @@ public class CandidateService {
         if (candidate.getProfilePicturePath() == null) {
             throw new CandidateNotFoundException(candidateId);
         }
-        return fileStorage.retrieve(candidate.getProfilePicturePath());
+        return profilePictureService.openPicture(candidate.getProfilePicturePath());
     }
 
     private RawSource createSource(
@@ -258,11 +256,10 @@ public class CandidateService {
 
     private boolean hasAnySource(
             MultipartFile resume, MultipartFile recruiterCsv, MultipartFile atsJson,
-            String linkedInUrl, String gitHubUrl) {
+            String gitHubUrl) {
         return (resume != null && !resume.isEmpty())
                 || (recruiterCsv != null && !recruiterCsv.isEmpty())
                 || (atsJson != null && !atsJson.isEmpty())
-                || (linkedInUrl != null && !linkedInUrl.isBlank())
                 || (gitHubUrl != null && !gitHubUrl.isBlank());
     }
 

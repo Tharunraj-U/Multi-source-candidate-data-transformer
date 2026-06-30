@@ -1,0 +1,15 @@
+*.log
+backend/target
+backend/.idea
+backend/.vscode
+backend/.env
+backend/src/main/resources/application.properties
+backend/src/main/resources/application.properties.bak
+backend/src/main/resources/application.properties.bak.2
+backend/src/main/resources/application.properties.bak.3
+backend/src/main/resources/application.properties.bak.4
+backend/src/main/resources/application.properties.bak.5
+backend/src/main/resources/application.properties.bak.6
+backend/src/main/resources/application.properties.bak.7
+backend/src/main/resources/application.properties.bak.8
+backend/src/main/resources/application.properties.bak.9

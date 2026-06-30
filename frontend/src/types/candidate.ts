@@ -80,6 +80,11 @@ export interface RawSource {
   ingestedAt?: string
 }
 
+export interface CandidateEmail {
+  address: string
+  validationStatus?: 'valid' | 'invalid' | 'unknown'
+}
+
 export interface Candidate {
   candidateId: string
   fullName?: string
@@ -88,7 +93,7 @@ export interface Candidate {
   overallConfidence?: number
   profilePicturePath?: string
   resumePath?: string
-  emails?: string[]
+  emails?: CandidateEmail[]
   phones?: string[]
   location?: string
   skills?: Skill[]

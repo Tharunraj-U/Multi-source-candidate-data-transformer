@@ -53,6 +53,13 @@ public final class ApiDtos {
 
     @Data
     @Builder
+    public static class EmailDto {
+        private String address;
+        private String validationStatus;
+    }
+
+    @Data
+    @Builder
     public static class SkillDto {
         private String name;
         private String canonical;
@@ -124,7 +131,7 @@ public final class ApiDtos {
         private BigDecimal overallConfidence;
         private String profilePicturePath;
         private String resumePath;
-        private List<String> emails;
+        private List<EmailDto> emails;
         private List<String> phones;
         private String location;
         private List<SkillDto> skills;

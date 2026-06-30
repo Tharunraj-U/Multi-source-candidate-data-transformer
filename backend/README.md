@@ -1,29 +1,24 @@
-# Candidate Profile System — Backend (partial)
+# Candidate Profile System — Backend
 
-Spring Boot 3.4 / Java 21 module with **entities** and **parser services** only.
+Part of the [Multi-Source Candidate Data Transformer](../README.md). Spring Boot 3.4 / Java 21 module for multi-source candidate profile ingestion, parsing, merge, and API.
 
 ## Infrastructure
 
 | Service | How to run |
 |---------|------------|
 | **MySQL** | Local MySQL 8 (`MySQL80` service) — `root` / `root` |
-| **Redis** | Docker only: `docker compose up -d` |
+| **Redis** | Optional — `docker compose up -d` (rate limiting / future cache) |
 
 Database `candidate_db` is created automatically on first run (`createDatabaseIfNotExist=true`).
-
-## Database initialization
-
-Flyway runs `V1__init.sql` on startup:
-- 13 application tables + `flyway_schema_history`
-- 7 seed rows in `skill_alias`
-
-Hibernate validates entities against the schema (`ddl-auto: validate`).
 
 ## Run
 
 ```bash
-# Start Redis
+# Optional Redis
 docker compose up -d
+
+# Configure env (see .env.example)
+cp .env.example .env
 
 # Start app
 mvn spring-boot:run
@@ -31,26 +26,23 @@ mvn spring-boot:run
 
 Health check: http://localhost:8080/actuator/health
 
-## Configuration (`application.properties`)
+## Configuration
 
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/candidate_db
-spring.datasource.username=root
-spring.datasource.password=${DB_PASSWORD:root}
-spring.datasource.hikari.minimum-idle=2
-spring.datasource.hikari.maximum-pool-size=10
-```
+Key env vars in `backend/.env`:
 
-Optional env vars: `GITHUB_TOKEN`, `LINKEDIN_EMAIL`, `LINKEDIN_PASSWORD`
+- `GEMINI_API_KEY` — structured resume extraction (recommended)
+- `GITHUB_TOKEN` — optional, higher GitHub API rate limits
+- `DB_PASSWORD` — MySQL password
 
-## Included
+## Source parsers
 
-### JPA Entities (`domain/entity/`)
-`Candidate`, `RawSource`, `CandidateEmail`, `CandidatePhone`, `CandidateSkill`, `CandidateExperience`, `CandidateEducation`, `CandidateLink`, `CandidateProvenance`, `CandidateConfidence`, `RuntimeConfig`, `ProcessingJob`, `SkillAlias`
+| Parser | Input |
+|--------|-------|
+| `ResumeParserService` | PDF/DOCX via Tika → Gemini (Java REST) + heuristic fallback |
+| `GitHubService` | GitHub REST API (profile metadata, languages, avatar) |
+| `CsvImportService` | Recruiter CSV |
+| `AtsJsonService` | ATS JSON blob |
 
-### Parser Services (`service/parser/`)
-`ResumeParserService`, `LinkedInScraperService`, `GitHubService`
+Resume flow: **Tika text → Gemini JSON → merge with `ResumeTextExtractor` when sparse.**
 
-## Not included (yet)
-
-Controllers, repositories, merge/confidence services, orchestrator.
+Field-level confidence scores are written to `candidate_confidence` during merge for the Confidence tab.

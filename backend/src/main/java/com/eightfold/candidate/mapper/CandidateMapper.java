@@ -23,7 +23,10 @@ public class CandidateMapper {
                         ? "/api/v1/candidate/" + id + "/picture" : null)
                 .resumePath(c.getResumePath() != null
                         ? "/api/v1/candidate/" + id + "/resume" : null)
-                .emails(c.getEmails().stream().map(CandidateEmail::getEmailAddress).toList())
+                .emails(c.getEmails().stream().map(e -> ApiDtos.EmailDto.builder()
+                        .address(e.getEmailAddress())
+                        .validationStatus(e.getValidationStatus())
+                        .build()).toList())
                 .phones(c.getPhones().stream().map(CandidatePhone::getPhoneE164).toList())
                 .location(c.getLocation())
                 .skills(c.getSkills().stream().map(s -> ApiDtos.SkillDto.builder()

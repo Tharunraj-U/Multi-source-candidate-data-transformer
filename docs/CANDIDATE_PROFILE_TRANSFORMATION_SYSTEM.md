@@ -104,14 +104,12 @@ flowchart TB
 
     subgraph parsers [Source Parsers Strategy]
         ResumeParser[ResumeParserService]
-        LinkedInScraper[LinkedInScraperService]
         GitHubService[GitHubService]
         CSVImport[CSVImportService]
         ATSJson[ATSJsonService]
     end
 
     subgraph normalization [Normalization Layer]
-        EmailVal[EmailValidationService]
         PhoneNorm[PhoneNormalizationService]
         SkillNorm[SkillNormalizationService]
     end
@@ -501,12 +499,12 @@ com.eightfold.candidate
 │   │   ├── SourceParser.java          # Strategy interface
 │   │   ├── SourceParserFactory.java   # Factory
 │   │   ├── ResumeParserService.java
-│   │   ├── LinkedInScraperService.java
 │   │   ├── GitHubService.java
 │   │   ├── CsvImportService.java
 │   │   └── AtsJsonService.java
+│   ├── extraction/
+│   │   └── GeminiProfileExtractionService.java
 │   ├── normalize/
-│   │   ├── EmailValidationService.java
 │   │   ├── PhoneNormalizationService.java
 │   │   └── SkillNormalizationService.java
 │   ├── merge/
@@ -911,7 +909,6 @@ INSERT INTO skill_alias (alias, canonical_name) VALUES
 | `resume` | file | No | PDF or DOCX |
 | `recruiterCsv` | file | No | CSV export |
 | `atsJson` | file | No | ATS JSON blob |
-| `linkedInUrl` | string | No | LinkedIn profile URL |
 | `gitHubUrl` | string | No | GitHub profile URL |
 | `runtimeConfig` | string (JSON) | No | Projection config |
 
@@ -923,7 +920,7 @@ INSERT INTO skill_alias (alias, canonical_name) VALUES
   "status": "DRAFT",
   "sources": [
     { "sourceId": "...", "sourceType": "RESUME", "status": "PENDING" },
-    { "sourceId": "...", "sourceType": "LINKEDIN", "status": "PENDING" }
+    { "sourceId": "...", "sourceType": "GITHUB", "status": "PENDING" }
   ],
   "createdAt": "2026-06-29T10:00:00Z"
 }
@@ -1083,7 +1080,7 @@ paths:
                 resume:
                   type: string
                   format: binary
-                linkedInUrl:
+                gitHubUrl:
                   type: string
                   format: uri
                 runtimeConfig:
@@ -1288,13 +1285,9 @@ classDiagram
     }
 
     class ResumeParserService {
+        -gemini: GeminiProfileExtractionService
+        -heuristic: ResumeTextExtractor
         +parse(RawSource) ParsedCandidateDTO
-    }
-
-    class LinkedInScraperService {
-        -sessionManager: LinkedInSessionManager
-        +parse(RawSource) ParsedCandidateDTO
-        +refreshSession() void
     }
 
     class GitHubService {
@@ -1310,7 +1303,6 @@ classDiagram
     }
 
     SourceParser <|.. ResumeParserService
-    SourceParser <|.. LinkedInScraperService
     SourceParser <|.. GitHubService
     SourceParser <|.. CsvImportService
     SourceParser <|.. AtsJsonService
@@ -1321,10 +1313,6 @@ classDiagram
         +normalize(T) T
     }
 
-    class EmailValidationService {
-        +validate(String) EmailValidationResult
-    }
-
     class PhoneNormalizationService {
         +normalize(String) String
     }
@@ -1333,7 +1321,6 @@ classDiagram
         +normalize(String) String
     }
 
-    Normalizer <|.. EmailValidationService
     Normalizer <|.. PhoneNormalizationService
     Normalizer <|.. SkillNormalizationService
 
@@ -1498,7 +1485,6 @@ confidence:
 ```
 fieldConfidence(field, sourceType, context) =
     baseScore(sourceType)
-    + modifierEmailValidation(context)      // +0.03 if MX+SMTP pass
     + modifierPhoneNormalized(context)      // +0.02 if E.164
     + modifierSkillCanonical(context)       // +0.05 if alias matched
     + modifierFieldComplete(context)        // +0.02 if non-empty and validated
@@ -1506,6 +1492,8 @@ fieldConfidence(field, sourceType, context) =
 
 clamp result to [0.0, 1.0]
 ```
+
+**Implemented (simplified):** `CandidateProfileMerger.populateFieldConfidence` writes fixed scores per field group after merge (`full_name` 0.95, `emails`/`phones` 0.95, `experience`/`education` 0.90 or 0.30 if empty, `skills` 0.85 or 0.30 if empty).
 
 ### 16.3 Field Weights for Overall Confidence
 
@@ -1668,12 +1656,10 @@ When `includeProvenance: false` in runtime config, the Projection Service strips
 
 | Key Pattern | Value | TTL | Invalidation |
 |-------------|-------|-----|--------------|
-| `email:valid:{sha256}` | `EmailValidationResult` JSON | 24h | None (immutable for same email) |
 | `skill:alias:{normalized}` | Canonical skill name | 7d | On alias table update |
 | `github:user:{username}` | GitHub API response JSON | 1h | TTL expiry |
 | `candidate:{id}` | Full `CandidateResponse` JSON | 15m | On reprocess/delete |
 | `candidate:list:{hash}` | Paginated list response | 5m | On any candidate update |
-| `linkedin:session` | Session cookies JSON | 12h | On session refresh |
 
 ### 19.2 Cache-Aside Pattern
 
@@ -1694,9 +1680,6 @@ redis.deletePattern("candidate:list:*")
 ### 19.3 Spring Cache Annotations
 
 ```java
-@Cacheable(value = "emailValidation", key = "#email.hashCode()")
-public EmailValidationResult validateEmail(String email) { ... }
-
 @Cacheable(value = "skillAlias", key = "#skill.toLowerCase()")
 public String resolveCanonicalSkill(String skill) { ... }
 
@@ -1963,61 +1946,42 @@ resilience4j:
 
 ## 24. Sequence Diagrams (Detailed)
 
-### 24.1 LinkedIn Scraper with Session Management
+### 24.1 Resume Extraction (Tika + Gemini + Heuristic)
 
 ```mermaid
 sequenceDiagram
     participant Job as ProcessingJob
-    participant LI as LinkedInScraperService
-    participant Session as LinkedInSessionManager
-    participant Redis
-    participant LinkedIn as LinkedIn_Website
+    participant Resume as ResumeParserService
+    participant Tika as ApacheTika
+    participant Gemini as GeminiProfileExtractionService
+    participant Heuristic as ResumeTextExtractor
 
-    Job->>LI: parse(rawSource)
-    LI->>Session: getSession()
-    Session->>Redis: GET linkedin:session
-    alt Session valid
-        Redis-->>Session: cookies
-    else Session expired
-        Session->>LinkedIn: POST login (dummy account)
-        LinkedIn-->>Session: auth cookies
-        Session->>Redis: SET linkedin:session TTL=12h
+    Job->>Resume: parse(rawSource)
+    Resume->>Tika: extract text from PDF/DOCX
+    Tika-->>Resume: plain text
+    alt Gemini enabled
+        Resume->>Gemini: extract structured JSON
+        Gemini-->>Resume: ParsedCandidateDTO
+        Resume->>Heuristic: fallback if experience/education empty
+        Heuristic-->>Resume: merged fields
+    else Gemini disabled
+        Resume->>Heuristic: heuristic parse only
+        Heuristic-->>Resume: ParsedCandidateDTO
     end
-    Session-->>LI: session cookies
-    LI->>LinkedIn: GET profile page (with cookies)
-    alt Success
-        LinkedIn-->>LI: HTML profile
-        LI->>LI: Extract name, headline, experience, etc.
-        LI-->>Job: ParsedCandidateDTO
-    else Auth failure
-        LI->>Session: invalidate()
-        LI-->>Job: SourceParseException(LINKEDIN_AUTH_FAILED)
-    end
+    Resume-->>Job: ParsedCandidateDTO
 ```
 
-### 24.2 Email Validation with Cache
+### 24.2 Field Confidence Population
 
 ```mermaid
 sequenceDiagram
-    participant Merge as MergeService
-    participant Email as EmailValidationService
-    participant Redis
-    participant DNS as DNS_Resolver
-    participant SMTP as SMTP_Server
+    participant Merge as CandidateProfileMerger
+    participant DB as MySQL
 
-    Merge->>Email: validate("john@example.com")
-    Email->>Redis: GET email:valid:{hash}
-    alt Cache hit
-        Redis-->>Email: { valid: true, mx: true, smtp: true }
-    else Cache miss
-        Email->>Email: Syntax check (regex + libphonenumber-style)
-        Email->>DNS: MX lookup
-        DNS-->>Email: MX records
-        Email->>SMTP: RCPT TO probe
-        SMTP-->>Email: 250 OK
-        Email->>Redis: SET email:valid:{hash} TTL=24h
-    end
-    Email-->>Merge: EmailValidationResult
+    Merge->>Merge: merge parsed sources
+    Merge->>Merge: populateFieldConfidence
+    Note over Merge: full_name, emails, phones, experience, education, skills
+    Merge->>DB: candidate_confidence rows
 ```
 
 ### 24.3 Full Pipeline (Combined)
@@ -2073,30 +2037,21 @@ sequenceDiagram
 | Aspect | Detail |
 |--------|--------|
 | Input | PDF or DOCX file from file storage |
-| Library | Apache Tika (text extraction) + regex/NLP heuristics |
-| Extracts | Name, email, phone, experience, education, skills, companies, dates |
-| Error handling | Corrupt file → `SourceParseException(RESUME_CORRUPT)` |
+| Text extraction | Apache Tika |
+| Structured extraction | **Gemini** (`gemini-2.0-flash`, JSON mode, ≤6k input chars) with regex heuristic fallback |
+| Extracts | Name, email, phone, experience (company, title, dates), education, skills, years experience |
+| Token strategy | Truncate long resumes (head + tail); compact single-line prompt; `maxOutputTokens=1024` |
+| Error handling | Corrupt file → `SourceParseException(RESUME_CORRUPT)`; Gemini failure → heuristic result |
 
-### A.2 LinkedIn Scraper Service
-
-| Aspect | Detail |
-|--------|--------|
-| Auth | Dummy LinkedIn account; credentials from secrets manager |
-| Session | Cookies persisted in Redis (`linkedin:session`); auto-refresh on 401 |
-| Extracts | Name, headline, about, experience, education, skills, email, contact info, profile image, location, certifications |
-| Resilience | Circuit breaker; 60s cooldown on repeated failures |
-
-### A.3 GitHub Service
+### A.2 GitHub Service
 
 | Aspect | Detail |
 |--------|--------|
-| API | GitHub REST v3 + GraphQL v4 |
-| Auth | Personal access token from secrets manager |
-| Extracts | Name, username, bio, followers, following, public repos, languages, organizations, contributions, avatar, website |
-| Cache | 1h Redis cache per username |
-| Retry | 3 attempts with exponential backoff on 403/500 |
+| API | GitHub REST v3 |
+| Auth | Optional `GITHUB_TOKEN` for higher rate limits |
+| Extracts | Name, bio, location, repo languages as skills, avatar, website link |
 
-### A.4 CSV Import Service
+### A.3 CSV Import Service
 
 | Aspect | Detail |
 |--------|--------|
@@ -2104,13 +2059,49 @@ sequenceDiagram
 | Default mapping | `Full Name` → fullName, `Email` → emails, `Phone` → phones, `Skills` → skills |
 | Error handling | Empty file → FAILED; malformed row → skip row + warn |
 
-### A.5 ATS JSON Service
+### A.4 ATS JSON Service
 
 | Aspect | Detail |
 |--------|--------|
 | Input | ATS-specific JSON blob |
 | Mapping | Configurable JSONPath mappings in `application.yml` |
 | Error handling | Invalid JSON → FAILED; missing required fields → partial parse |
+
+### A.5 Confidence Scoring
+
+| field_path | Score when populated |
+|------------|---------------------|
+| `full_name` | 0.95 |
+| `emails`, `phones` | 0.95 |
+| `experience`, `education` | 0.90 (0.30 if empty) |
+| `skills` | 0.85 (0.30 if empty) |
+
+Field scores are written to `candidate_confidence` during merge. Overall confidence is the average of source-type base scores.
+
+### A.6 Gemini Extraction (Resume only)
+
+| Aspect | Detail |
+|--------|--------|
+| Service | `GeminiProfileExtractionService` — Java REST client, JSON response mode |
+| Model | `gemini-2.0-flash` via `GEMINI_API_KEY` |
+| Flow | Tika text → Gemini → merge with `ResumeTextExtractor` heuristic fallback |
+| Token limits | Input ≤6k chars; output ≤1024 tokens |
+
+```mermaid
+sequenceDiagram
+    participant Resume as ResumeParserService
+    participant Tika as ApacheTika
+    participant Gemini as GeminiAPI
+    participant Heuristic as ResumeTextExtractor
+    participant Merge as CandidateProfileMerger
+
+    Resume->>Tika: extract text
+    Tika->>Gemini: compact JSON prompt
+    Gemini-->>Resume: experience education skills
+    Resume->>Heuristic: fallback if Gemini sparse
+    Resume->>Merge: ParsedCandidateDTO
+    Merge->>Merge: populateFieldConfidence
+```
 
 ---
 

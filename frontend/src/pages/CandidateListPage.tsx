@@ -224,7 +224,9 @@ export function CandidateListPage() {
                           </Badge>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">{candidate.primaryEmail ?? '—'}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {candidate.primaryEmail ?? '—'}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">{candidate.currentCompany ?? '—'}</td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {candidate.yearsExperience != null ? `${candidate.yearsExperience} yrs` : '—'}

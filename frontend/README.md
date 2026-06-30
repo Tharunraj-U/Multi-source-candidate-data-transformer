@@ -1,6 +1,6 @@
 # Candidate Profile Transformer — Frontend
 
-React + Vite + TypeScript SPA for the Candidate Profile Transformation System.
+Part of the [Multi-Source Candidate Data Transformer](../README.md). React + Vite + TypeScript SPA for the Candidate Profile Transformation System.
 
 ## Stack
 
