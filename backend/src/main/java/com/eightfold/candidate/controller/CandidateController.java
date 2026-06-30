@@ -47,11 +47,14 @@ public class CandidateController {
     }
 
     @GetMapping("/{id}")
-    public ApiDtos.CandidateResponseDto getCandidate(
+    public Object getCandidate(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "false") boolean projection,
             @RequestParam(defaultValue = "true") boolean includeProvenance,
             @RequestParam(defaultValue = "true") boolean includeConfidence) {
+        if (projection) {
+            return candidateService.getProjectedCandidate(id);
+        }
         return candidateService.getCandidate(id, includeProvenance, includeConfidence);
     }
 

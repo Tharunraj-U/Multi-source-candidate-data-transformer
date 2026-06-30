@@ -7,11 +7,15 @@ import com.eightfold.candidate.domain.enums.SourceStatus;
 import com.eightfold.candidate.domain.enums.SourceType;
 import com.eightfold.candidate.dto.response.ApiDtos;
 import com.eightfold.candidate.exception.CandidateNotFoundException;
+import com.eightfold.candidate.exception.ValidationException;
 import com.eightfold.candidate.mapper.CandidateMapper;
 import com.eightfold.candidate.repository.CandidateRepository;
 import com.eightfold.candidate.repository.ProcessingJobRepository;
 import com.eightfold.candidate.repository.RawSourceRepository;
 import com.eightfold.candidate.repository.RuntimeConfigRepository;
+import com.eightfold.candidate.service.projection.ProfileProjectionService;
+import com.eightfold.candidate.service.projection.RuntimeConfigDto;
+import com.eightfold.candidate.service.projection.RuntimeConfigValidator;
 import com.eightfold.candidate.service.storage.LocalFileStorageService;
 import com.eightfold.candidate.service.storage.ProfilePictureService;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +33,7 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -45,6 +50,8 @@ public class CandidateService {
     private final ProfilePictureService profilePictureService;
     private final CandidateMapper mapper;
     private final CandidateProcessingService processingService;
+    private final RuntimeConfigValidator runtimeConfigValidator;
+    private final ProfileProjectionService profileProjectionService;
 
     @Transactional
     public ApiDtos.UploadResponseDto upload(
@@ -95,6 +102,7 @@ public class CandidateService {
         candidate.getRawSources().addAll(sources);
 
         if (runtimeConfigJson != null && !runtimeConfigJson.isBlank()) {
+            runtimeConfigValidator.parseAndValidate(runtimeConfigJson.trim());
             runtimeConfigRepository.save(RuntimeConfig.builder()
                     .candidate(candidate)
                     .configJson(runtimeConfigJson.trim())
@@ -182,6 +190,20 @@ public class CandidateService {
         Candidate candidate = candidateRepository.findByCandidateIdAndDeletedFalse(candidateId)
                 .orElseThrow(() -> new CandidateNotFoundException(candidateId));
         return mapper.toResponse(candidate, includeProvenance, includeConfidence);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getProjectedCandidate(UUID candidateId) {
+        Candidate candidate = candidateRepository.findByCandidateIdAndDeletedFalse(candidateId)
+                .orElseThrow(() -> new CandidateNotFoundException(candidateId));
+        RuntimeConfig config = runtimeConfigRepository
+                .findFirstByCandidateCandidateIdOrderByCreatedAtDesc(candidateId)
+                .orElseThrow(() -> new ValidationException(
+                        "No runtime config found for candidate; upload with runtimeConfig first"));
+        RuntimeConfigDto parsed = runtimeConfigValidator.parseAndValidate(config.getConfigJson());
+        ApiDtos.CandidateResponseDto canonical = mapper.toResponse(
+                candidate, parsed.isIncludeProvenance(), parsed.isIncludeConfidence());
+        return profileProjectionService.project(canonical, parsed);
     }
 
     @Transactional(readOnly = true)

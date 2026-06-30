@@ -2,10 +2,13 @@ com\eightfold\candidate\service\extraction\ResumeTextExtractionService.class
 com\eightfold\candidate\domain\model\ParsedExperienceDTO$ParsedExperienceDTOBuilder.class
 com\eightfold\candidate\domain\entity\CandidateEmail.class
 com\eightfold\candidate\domain\entity\ProcessingJob$ProcessingJobBuilder.class
+com\eightfold\candidate\service\projection\CanonicalPathResolver.class
 com\eightfold\candidate\domain\entity\CandidatePhone.class
 com\eightfold\candidate\domain\model\ParsedCandidateDTO.class
+com\eightfold\candidate\service\projection\RuntimeConfigValidator.class
 com\eightfold\candidate\domain\model\ParsedLinkDTO.class
 com\eightfold\candidate\service\extraction\OllamaProfileExtractionService$ResponseFormat.class
+com\eightfold\candidate\service\projection\RuntimeConfigDto$FieldMapping.class
 com\eightfold\candidate\config\DatabaseInitVerifier.class
 com\eightfold\candidate\domain\entity\CandidateExperience$CandidateExperienceBuilder.class
 com\eightfold\candidate\service\extraction\ResumeProfileJsonMapper.class
@@ -20,6 +23,7 @@ com\eightfold\candidate\domain\model\ParsedExperienceDTO.class
 com\eightfold\candidate\domain\entity\CandidateSkill.class
 com\eightfold\candidate\domain\entity\CandidateProvenance$CandidateProvenanceBuilder.class
 com\eightfold\candidate\domain\entity\SkillAlias$SkillAliasBuilder.class
+com\eightfold\candidate\exception\ProjectionException.class
 com\eightfold\candidate\domain\entity\CandidateExperience.class
 com\eightfold\candidate\domain\entity\RawSource.class
 com\eightfold\candidate\service\parser\ResumeParserService.class
@@ -29,6 +33,8 @@ com\eightfold\candidate\domain\entity\CandidateLink.class
 com\eightfold\candidate\domain\enums\LinkType.class
 com\eightfold\candidate\domain\entity\CandidateEducation$CandidateEducationBuilder.class
 com\eightfold\candidate\domain\entity\CandidateEmail$CandidateEmailBuilder.class
+com\eightfold\candidate\service\projection\RuntimeConfigDto.class
+com\eightfold\candidate\service\projection\ProfileProjectionService.class
 com\eightfold\candidate\domain\entity\CandidateProvenance.class
 com\eightfold\candidate\domain\entity\Candidate.class
 com\eightfold\candidate\domain\enums\CandidateStatus.class
@@ -52,11 +58,14 @@ com\eightfold\candidate\service\extraction\ResumeExtractionPrompt.class
 com\eightfold\candidate\service\normalize\EmailValidationService.class
 com\eightfold\candidate\domain\entity\ProcessingJob.class
 com\eightfold\candidate\domain\entity\RuntimeConfig$RuntimeConfigBuilder.class
+com\eightfold\candidate\service\normalize\SkillNormalizationService.class
 com\eightfold\candidate\CandidateApplication.class
 com\eightfold\candidate\service\parser\ResumeTextExtractor$PhoneSpan.class
 com\eightfold\candidate\domain\entity\Candidate$CandidateBuilder.class
 com\eightfold\candidate\domain\enums\JobStatus.class
+com\eightfold\candidate\repository\SkillAliasRepository.class
 com\eightfold\candidate\domain\model\ParsedCandidateDTO$ParsedCandidateDTOBuilder.class
+com\eightfold\candidate\exception\ValidationException.class
 com\eightfold\candidate\service\extraction\ResumeLlmExtractionService.class
 com\eightfold\candidate\domain\model\ParsedSkillDTO.class
 com\eightfold\candidate\service\merge\CandidateProfileMerger.class

@@ -39,6 +39,26 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(ValidationException.class)
+    public ProblemDetail handleValidationException(ValidationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle("Validation Error");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(ProjectionException.class)
+    public ProblemDetail handleProjection(ProjectionException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        problem.setTitle("Projection Error");
+        problem.setType(URI.create("https://api.example.com/errors/projection-error"));
+        if (ex.getFieldPath() != null) {
+            problem.setProperty("fieldPath", ex.getFieldPath());
+        }
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
         String detail = ex.getBindingResult().getFieldErrors().stream()

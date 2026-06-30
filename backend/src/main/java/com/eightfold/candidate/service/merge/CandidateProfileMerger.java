@@ -5,6 +5,7 @@ import com.eightfold.candidate.domain.enums.LinkType;
 import com.eightfold.candidate.domain.enums.SourceType;
 import com.eightfold.candidate.domain.model.*;
 import com.eightfold.candidate.service.normalize.EmailValidationService;
+import com.eightfold.candidate.service.normalize.SkillNormalizationService;
 import com.eightfold.candidate.service.parser.ResumeTextExtractor;
 import org.springframework.stereotype.Component;
 
@@ -19,9 +20,13 @@ public class CandidateProfileMerger {
             SourceType.RESUME, SourceType.GITHUB, SourceType.ATS_JSON, SourceType.RECRUITER_CSV);
 
     private final EmailValidationService emailValidation;
+    private final SkillNormalizationService skillNormalization;
 
-    public CandidateProfileMerger(EmailValidationService emailValidation) {
+    public CandidateProfileMerger(
+            EmailValidationService emailValidation,
+            SkillNormalizationService skillNormalization) {
         this.emailValidation = emailValidation;
+        this.skillNormalization = skillNormalization;
     }
 
     public void merge(Candidate candidate, List<ParsedCandidateDTO> parsedList) {
@@ -102,7 +107,7 @@ public class CandidateProfileMerger {
         candidate.getSkills().forEach(s -> existing.add(
                 (s.getCanonicalSkill() != null ? s.getCanonicalSkill() : s.getSkillName()).toLowerCase()));
         for (ParsedSkillDTO skill : parsed.getSkills()) {
-            String canonical = skill.getName();
+            String canonical = skillNormalization.canonicalize(skill.getName());
             if (canonical != null && !existing.contains(canonical.toLowerCase())) {
                 candidate.getSkills().add(CandidateSkill.builder()
                         .candidate(candidate)

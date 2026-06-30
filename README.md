@@ -71,14 +71,15 @@ App: http://localhost:5173
 | `GITHUB_TOKEN` | Optional, higher GitHub API rate limits |
 | `APP_PROCESSING_MAX_ATTEMPTS` | Retry count for unexpected async worker failures |
 
-See [backend/README.md](backend/README.md) and [docs/CANDIDATE_PROFILE_TRANSFORMATION_SYSTEM.md](docs/CANDIDATE_PROFILE_TRANSFORMATION_SYSTEM.md).
+See [backend/README.md](backend/README.md), [docs/TECHNICAL_DESIGN.md](docs/TECHNICAL_DESIGN.md), and [docs/CANDIDATE_PROFILE_TRANSFORMATION_SYSTEM.md](docs/CANDIDATE_PROFILE_TRANSFORMATION_SYSTEM.md).
 
 ## API overview
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v1/candidate/upload` | Multipart upload |
+| `POST` | `/api/v1/candidate/upload` | Multipart upload (optional `runtimeConfig` JSON) |
 | `POST` | `/api/v1/candidate/process` | Start async processing |
 | `GET` | `/api/v1/candidate/{id}/job/{jobId}` | Read async job status and failure details |
-| `GET` | `/api/v1/candidate/{id}` | Full profile (`?includeConfidence=true`) |
+| `GET` | `/api/v1/candidate/{id}` | Canonical profile (`?includeConfidence=true`) |
+| `GET` | `/api/v1/candidate/{id}?projection=true` | Projected output using stored runtime config |
 | `POST` | `/api/v1/candidate/{id}/reprocess` | Re-run pipeline |

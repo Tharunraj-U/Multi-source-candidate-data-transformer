@@ -36,6 +36,18 @@ The backend does not use Redis or an external queue.
 
 User-visible failure reporting is available through `GET /api/v1/candidate/{id}/job/{jobId}`. That response includes the current `status`, `attemptCount`, `maxAttempts`, and `errorMessage`.
 
+## Runtime projection
+
+Upload an optional `runtimeConfig` JSON with the candidate. Read the projected shape with:
+
+`GET /api/v1/candidate/{id}?projection=true`
+
+Invalid config at upload returns `400`. Unknown projection paths return `422`. See [docs/TECHNICAL_DESIGN.md](../docs/TECHNICAL_DESIGN.md).
+
+## Skill normalization
+
+During merge, skill names are resolved through the `skill_alias` table (for example `JS` → `JavaScript`).
+
 ## Configuration
 
 | Variable | Default | Description |
